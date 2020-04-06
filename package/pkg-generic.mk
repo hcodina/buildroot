@@ -127,6 +127,25 @@ define FIXUP_PYTHON_SYSCONFIGDATA
 endef
 endif
 
+# Functions to detect overwritten files
+
+ifeq ($(BR2_PER_PACKAGE_DIRECTORIES),y)
+# $(1): base directory to search in
+# $(2): suffix of file (optional)
+define pkg_detect_overwrite_before
+	find $(1) -type f -print0 | xargs -0 -r md5sum > $($(PKG)_DIR)/.files$(2).md5;
+endef
+
+# $(1): base directory to search in
+# $(2): suffix of file (optional)
+define pkg_detect_overwrite_after
+	if test -s $($(PKG)_DIR)/.files$(2).md5 ; then \
+		md5sum --quiet -c $($(PKG)_DIR)/.files$(2).md5 || \
+		{ echo "ERROR: package $($(PKG)_NAME) has overwritten files installed by a previous package, aborting."; exit 1; } ; \
+	fi
+endef
+endif
+
 # Functions to collect statistics about installed files
 
 # $(1): base directory to search in
@@ -281,6 +300,8 @@ $(BUILD_DIR)/%/.stamp_configured:
 	$(call fixup-libtool-files,$(NAME),$(HOST_DIR))
 	$(call fixup-libtool-files,$(NAME),$(STAGING_DIR))
 	$(foreach hook,$($(PKG)_POST_PREPARE_HOOKS),$(call $(hook))$(sep))
+	@$(call pkg_detect_overwrite_before,$(TARGET_DIR))
+	@$(call pkg_detect_overwrite_before,$(HOST_DIR),-host)
 	$(foreach hook,$($(PKG)_PRE_CONFIGURE_HOOKS),$(call $(hook))$(sep))
 	$($(PKG)_CONFIGURE_CMDS)
 	$(foreach hook,$($(PKG)_POST_CONFIGURE_HOOKS),$(call $(hook))$(sep))
@@ -406,6 +427,8 @@ $(BUILD_DIR)/%/.stamp_installed:
 	@$(call pkg_size_after,$(BINARIES_DIR),-images)
 	@$(call pkg_size_after,$(HOST_DIR),-host)
 	@$(call check_bin_arch)
+	@$(call pkg_detect_overwrite_after,$(TARGET_DIR))
+	@$(call pkg_detect_overwrite_after,$(HOST_DIR),-host)
 	$(Q)touch $@
 
 # Remove package sources
