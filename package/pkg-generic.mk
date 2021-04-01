@@ -171,6 +171,30 @@ define pkg_size_after
 	rm -f $($(PKG)_DIR)/.files-list$(2).after
 endef
 
+# Functions to collect final rsync exclusion files
+
+# $(1): base directory to search in
+# $(2): suffix of file (optional)
+define pkg_final_rsync_before
+	cd $(1); \
+	LC_ALL=C find . \( -type f -o -type l \) -printf '%T@:%i:%#m:%y:%s,%p\n' \
+		| LC_ALL=C sort > $($(PKG)_DIR)/.files-final-rsync$(2).before
+endef
+
+# $(1): base directory to search in
+# $(2): suffix of file (optional)
+define pkg_final_rsync_after
+	cd $(1); \
+	LC_ALL=C find . \( -type f -o -type l \) -printf '%T@:%i:%#m:%y:%s,%p\n' \
+		| LC_ALL=C sort > $($(PKG)_DIR)/.files-final-rsync$(2).after
+	LC_ALL=C comm -2 \
+		$($(PKG)_DIR)/.files-final-rsync$(2).before \
+		$($(PKG)_DIR)/.files-final-rsync$(2).after \
+		| sed -r -e 's/^[^,]+,./- /' \
+		> $($(PKG)_DIR)/.files-final-rsync$(2).exclude_rsync
+	rm -f $($(PKG)_DIR)/.files-final-rsync$(2).after
+endef
+
 define check_bin_arch
 	support/scripts/check-bin-arch -p $($(PKG)_NAME) \
 		-l $($(PKG)_DIR)/.files-list.txt \
@@ -293,6 +317,8 @@ $(BUILD_DIR)/%/.stamp_configured:
 	@$(call MESSAGE,"Configuring")
 	$(Q)mkdir -p $(HOST_DIR) $(TARGET_DIR) $(STAGING_DIR) $(BINARIES_DIR)
 	$(call prepare-per-package-directory,$($(PKG)_FINAL_DEPENDENCIES))
+	@$(call pkg_final_rsync_before,$(TARGET_DIR))
+	@$(call pkg_final_rsync_before,$(HOST_DIR),-host)
 	@$(call pkg_size_before,$(TARGET_DIR))
 	@$(call pkg_size_before,$(STAGING_DIR),-staging)
 	@$(call pkg_size_before,$(BINARIES_DIR),-images)
@@ -427,6 +453,8 @@ $(BUILD_DIR)/%/.stamp_installed:
 	@$(call pkg_size_after,$(BINARIES_DIR),-images)
 	@$(call pkg_size_after,$(HOST_DIR),-host)
 	@$(call check_bin_arch)
+	@$(call pkg_final_rsync_after,$(TARGET_DIR))
+	@$(call pkg_final_rsync_after,$(HOST_DIR),-host)
 	@$(call pkg_detect_overwrite_after,$(TARGET_DIR))
 	@$(call pkg_detect_overwrite_after,$(HOST_DIR),-host)
 	$(Q)touch $@
