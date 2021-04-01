@@ -725,10 +725,33 @@ TARGET_DIR_FILES_LISTS = $(sort $(wildcard $(BUILD_DIR)/*/.files-list.txt))
 HOST_DIR_FILES_LISTS = $(sort $(wildcard $(BUILD_DIR)/*/.files-list-host.txt))
 STAGING_DIR_FILES_LISTS = $(sort $(wildcard $(BUILD_DIR)/*/.files-list-staging.txt))
 
+ifeq ($(BR2_PER_PACKAGE_DIRECTORIES),y)
+# rsync the contents of per-package directories
+# $1: space-separated list of packages to rsync from
+# $2: 'host' or 'target'
+# $3: destination directory
+# $4: exclude file list to use
+define per-package-rsync-delta
+	$(Q)mkdir -p $(3)
+	$(foreach pkg,$(1),\
+		$(Q)rsync -a --link-dest=$(PER_PACKAGE_DIR)/$(pkg)/$(strip $(2))/ \
+			--filter='merge $($(call UPPERCASE,$(pkg))_DIR)/$(strip $(4))' \
+			$(PER_PACKAGE_DIR)/$(pkg)/$(strip $(2))/ \
+			$(3)$(sep))
+endef
+endif
+
 .PHONY: host-finalize
 host-finalize: $(PACKAGES) $(HOST_DIR) $(HOST_DIR_SYMLINK)
 	@$(call MESSAGE,"Finalizing host directory")
-	$(call per-package-rsync,$(sort $(PACKAGES)),host,$(HOST_DIR))
+	$(call per-package-rsync-delta, \
+		$(sort $(foreach pkg, $(PACKAGES), \
+			$(pkg) $($(call UPPERCASE,$(pkg))_FINAL_RECURSIVE_DEPENDENCIES)) \
+		), \
+		host, \
+		$(HOST_DIR), \
+		.files-final-rsync-host.exclude_rsync \
+	)
 
 .PHONY: staging-finalize
 staging-finalize: $(STAGING_DIR_SYMLINK)
@@ -736,7 +759,14 @@ staging-finalize: $(STAGING_DIR_SYMLINK)
 .PHONY: target-finalize
 target-finalize: $(PACKAGES) $(TARGET_DIR) host-finalize
 	@$(call MESSAGE,"Finalizing target directory")
-	$(call per-package-rsync,$(sort $(PACKAGES)),target,$(TARGET_DIR))
+	$(call per-package-rsync-delta, \
+		$(sort $(foreach pkg, $(PACKAGES), \
+			$(pkg) $($(call UPPERCASE,$(pkg))_FINAL_RECURSIVE_DEPENDENCIES)) \
+		), \
+		target, \
+		$(TARGET_DIR), \
+		.files-final-rsync.exclude_rsync \
+	)
 	$(foreach hook,$(TARGET_FINALIZE_HOOKS),$($(hook))$(sep))
 	rm -rf $(TARGET_DIR)/usr/include $(TARGET_DIR)/usr/share/aclocal \
 		$(TARGET_DIR)/usr/lib/pkgconfig $(TARGET_DIR)/usr/share/pkgconfig \
