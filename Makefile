@@ -734,7 +734,7 @@ ifeq ($(BR2_PER_PACKAGE_DIRECTORIES),y)
 define per-package-rsync-delta
 	$(Q)mkdir -p $(3)
 	$(foreach pkg,$(1),\
-		$(Q)rsync -a --link-dest=$(PER_PACKAGE_DIR)/$(pkg)/$(strip $(2))/ \
+		$(Q)rsync -a \
 			--filter='merge $($(call UPPERCASE,$(pkg))_DIR)/$(strip $(4))' \
 			$(PER_PACKAGE_DIR)/$(pkg)/$(strip $(2))/ \
 			$(3)$(sep))
