@@ -220,6 +220,22 @@ define REMOVE_CONFLICTING_USELESS_FILES_IN_TARGET
 	$(call remove-conflicting-useless-files,$(TARGET_DIR))
 endef
 
+# Function to prepare package
+
+define prepare-pre-configure
+	@$(call pkg_final_rsync_before,$(TARGET_DIR))
+	@$(call pkg_final_rsync_before,$(HOST_DIR),-host)
+	@$(call pkg_size_before,$(TARGET_DIR))
+	@$(call pkg_size_before,$(STAGING_DIR),-staging)
+	@$(call pkg_size_before,$(BINARIES_DIR),-images)
+	@$(call pkg_size_before,$(HOST_DIR),-host)
+	$(call fixup-libtool-files,$(NAME),$(HOST_DIR))
+	$(call fixup-libtool-files,$(NAME),$(STAGING_DIR))
+	$(foreach hook,$($(PKG)_POST_PREPARE_HOOKS),$(call $(hook))$(sep))
+	@$(call pkg_detect_overwrite_before,$(TARGET_DIR))
+	@$(call pkg_detect_overwrite_before,$(HOST_DIR),-host)
+endef
+
 ################################################################################
 # Implicit targets -- produce a stamp file for each step of a package build
 ################################################################################
@@ -317,17 +333,7 @@ $(BUILD_DIR)/%/.stamp_configured:
 	@$(call MESSAGE,"Configuring")
 	$(Q)mkdir -p $(HOST_DIR) $(TARGET_DIR) $(STAGING_DIR) $(BINARIES_DIR)
 	$(call prepare-per-package-directory,$($(PKG)_FINAL_DEPENDENCIES))
-	@$(call pkg_final_rsync_before,$(TARGET_DIR))
-	@$(call pkg_final_rsync_before,$(HOST_DIR),-host)
-	@$(call pkg_size_before,$(TARGET_DIR))
-	@$(call pkg_size_before,$(STAGING_DIR),-staging)
-	@$(call pkg_size_before,$(BINARIES_DIR),-images)
-	@$(call pkg_size_before,$(HOST_DIR),-host)
-	$(call fixup-libtool-files,$(NAME),$(HOST_DIR))
-	$(call fixup-libtool-files,$(NAME),$(STAGING_DIR))
-	$(foreach hook,$($(PKG)_POST_PREPARE_HOOKS),$(call $(hook))$(sep))
-	@$(call pkg_detect_overwrite_before,$(TARGET_DIR))
-	@$(call pkg_detect_overwrite_before,$(HOST_DIR),-host)
+	$(call prepare-pre-configure)
 	$(foreach hook,$($(PKG)_PRE_CONFIGURE_HOOKS),$(call $(hook))$(sep))
 	$($(PKG)_CONFIGURE_CMDS)
 	$(foreach hook,$($(PKG)_POST_CONFIGURE_HOOKS),$(call $(hook))$(sep))
@@ -492,6 +498,13 @@ define pkg-graph-depends
 		-o $$(GRAPHS_DIR)/$$(@).$$(BR_GRAPH_OUT) \
 		$$(GRAPHS_DIR)/$$(@).dot
 endef
+
+ifeq ($(BR2_PER_PACKAGE_DIRECTORIES),y)
+define empty-per-package-directory
+	rm -rf $(HOST_DIR) $(TARGET_DIR)
+	mkdir -p $(HOST_DIR) $(TARGET_DIR)
+endef
+endif
 
 ################################################################################
 # inner-generic-package -- generates the make targets needed to build a
@@ -1097,6 +1110,8 @@ $(1)-all-legal-info:	$$(foreach p,$$($(2)_FINAL_ALL_DEPENDENCIES),$$(p)-all-lega
 
 $(1)-dirclean:		$$($(2)_TARGET_DIRCLEAN)
 
+$(1)-clean-for-reinstall: PKG=$(2)
+$(1)-clean-for-reinstall: NAME=$(1)
 $(1)-clean-for-reinstall:
 ifneq ($$($(2)_OVERRIDE_SRCDIR),)
 			rm -f $$($(2)_TARGET_RSYNC)
@@ -1106,6 +1121,11 @@ endif
 			rm -f $$($(2)_TARGET_INSTALL_TARGET)
 			rm -f $$($(2)_TARGET_INSTALL_IMAGES)
 			rm -f $$($(2)_TARGET_INSTALL_HOST)
+			$$(call empty-per-package-directory)
+			$$(call prepare-per-package-directory,$$($(2)_FINAL_DOWNLOAD_DEPENDENCIES))
+			$$(call prepare-per-package-directory,$$($(2)_FINAL_EXTRACT_DEPENDENCIES))
+			$$(call prepare-per-package-directory,$$($(2)_FINAL_DEPENDENCIES))
+			$$(call prepare-pre-configure)
 
 $(1)-reinstall:		$(1)-clean-for-reinstall $(1)
 
