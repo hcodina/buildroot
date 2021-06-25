@@ -192,6 +192,7 @@ define pkg_final_rsync_after
 		$($(PKG)_DIR)/.files-final-rsync$(2).after \
 		| sed -r -e 's/^[^,]+,./- /' \
 		> $($(PKG)_DIR)/.files-final-rsync$(2).exclude_rsync
+	rm -f $($(PKG)_DIR)/.files-final-rsync$(2).before
 	rm -f $($(PKG)_DIR)/.files-final-rsync$(2).after
 endef
 
