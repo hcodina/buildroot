@@ -1,0 +1,12 @@
+comment "|   .-<-- A --<-.          "
+comment "|  /             \\         "
+comment "| S --<-- B --<-- C        "
+comment "|  \\               \\       "
+comment "|   `-<-- D --<-----<-- F  "
+comment "| S: skeleton              "
+comment "| F: target-finalize       "
+
+source "$BR2_EXTERNAL_TLP_TEST_PATH/package/tlp_pkga/Config.in"
+source "$BR2_EXTERNAL_TLP_TEST_PATH/package/tlp_pkgb/Config.in"
+source "$BR2_EXTERNAL_TLP_TEST_PATH/package/tlp_pkgc/Config.in"
+source "$BR2_EXTERNAL_TLP_TEST_PATH/package/tlp_pkgd/Config.in"

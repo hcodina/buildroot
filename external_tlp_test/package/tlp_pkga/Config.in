@@ -1,0 +1,11 @@
+config BR2_PACKAGE_TLP_PKGA
+	bool "pkgA"
+	help
+	  TLP test package A
+
+if BR2_PACKAGE_TLP_PKGA
+config BR2_PACKAGE_TLP_PKGA_INSTALL_PKGAB
+	bool "install pkgab file"
+	help
+	  Install pkgab file
+endif

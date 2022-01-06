@@ -1,0 +1,11 @@
+config BR2_PACKAGE_TLP_PKGD
+	bool "pkgD"
+	help
+	  TLP test package D
+
+if BR2_PACKAGE_TLP_PKGD
+config BR2_PACKAGE_TLP_PKGD_INSTALL_PKGCD
+	bool "install pkgcd file"
+	help
+	  Install pkgcd file
+endif

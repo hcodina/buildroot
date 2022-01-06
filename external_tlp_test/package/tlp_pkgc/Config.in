@@ -1,0 +1,18 @@
+config BR2_PACKAGE_TLP_PKGC
+	bool "pkgC"
+	select BR2_PACKAGE_TLP_PKGA
+	select BR2_PACKAGE_TLP_PKGB
+	help
+	  TLP test package C (depends on A and B)
+
+if BR2_PACKAGE_TLP_PKGC
+config BR2_PACKAGE_TLP_PKGC_OVERWRITE_PKGA
+	bool "overwrite pkgA"
+	help
+	  TLP test package C overwrite file from pkgA
+
+config BR2_PACKAGE_TLP_PKGC_INSTALL_PKGCD
+	bool "install pkgcd file"
+	help
+	  Install pkgcd file
+endif
